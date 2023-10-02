@@ -22,7 +22,7 @@ public:
         int releaseYear = 1999
     );
 
-    void output(bool isLong = true);
+    void output(bool isLong = true) const;
     void shortOutput();
     void setTrackName(const std::string trackName);
 
@@ -76,6 +76,10 @@ public:
     std::vector<AudioFile> searchByArtistName(const std::string& artistName);
     std::vector<AudioFile> searchByReleaseYear(int releaseYear);
 
+    void printSearchResults(const std::vector<AudioFile>& results);
+    void searchAndPrintByArtistName(const std::string& artistName);
+    void searchAndPrintByReleaseYear(int releaseYear);
+
     void printStats();
 };
 
@@ -91,7 +95,11 @@ public:
 
     int printAudioFileArray();
     int printPlaylistArray();
+
+    std::vector<AudioFile> getAudioFileArray();
 };
+
+int printAudioFileArray(std::vector<AudioFile>& arr);
 
 int main()
 {
@@ -110,12 +118,17 @@ int main()
         std::cout << "2. Создать плейлист" << std::endl;
         std::cout << "3. Вывести список созданных треков" << std::endl;
         std::cout << "4. Вывести список созданных плейлистов" << std::endl;
+        std::cout << "5. Поиск треков по имени исполнителя" << std::endl;
+        std::cout << "6. Поиск треков по году выхода" << std::endl;
+        std::cout << "7. Редактировать плейлист" << std::endl;
+        std::cout << "8. Аудиоплеер" << std::endl;
         std::cout << "0. Выход" << std::endl;
 
         int command;
         do {
             std::cout << "Введите команду: ";
             std::cin >> command;
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // очистка буфера ввода
         } while (command < 0 || command > 4);
 
         switch (command) {
@@ -125,12 +138,10 @@ int main()
             break;
         case 1:
             std::cout << "Создать аудиофайл" << std::endl;
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // очистка буфера ввода
             lib.createAudioFile();
             break;
         case 2:
             std::cout << "Создать плейлист" << std::endl;
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // очистка буфера ввода
             lib.createPlaylist();
             break;
         case 3:
@@ -141,17 +152,32 @@ int main()
             std::cout << "Вывести список созданных плейлистов" << std::endl;
             lib.printPlaylistArray();
             break;
+        case 5: {
+            std::cout << "Поиск треков по имени исполнителя" << std::endl;
+
+            std::string artistName;
+            std::getline(std::cin, artistName);
+
+            AudioCollection collection(lib.getAudioFileArray());
+            collection.searchAndPrintByArtistName(artistName);
+        } break;
+        case 6: {
+            std::cout << "Поиск треков по году выхода" << std::endl;
+
+            int releaseYear;
+            std::cin >> releaseYear;
+
+            AudioCollection collection(lib.getAudioFileArray());
+            collection.searchAndPrintByReleaseYear(releaseYear);
+        } break;
+        case 7:
+            std::cout << "Редактировать плейлист" << std::endl;
+            break;
         }
     }
 }
 
-AudioFile::AudioFile(
-    const std::string& fileName,
-    const std::string& artistName,
-    const std::string& trackName,
-    int duration,
-    int releaseYear
-) {
+AudioFile::AudioFile(const std::string& fileName, const std::string& artistName, const std::string& trackName, int duration, int releaseYear) {
     this->fileName = fileName;
     this->artistName = artistName;
     this->trackName = trackName;
@@ -159,7 +185,7 @@ AudioFile::AudioFile(
     this->releaseYear = releaseYear;
 }
 
-void AudioFile::output(bool isLong)
+void AudioFile::output(bool isLong) const
 {
     if (isLong) { // длинная версия
         std::cout << "Название трека: " << trackName << std::endl;
@@ -334,6 +360,35 @@ std::vector<AudioFile> AudioCollection::searchByReleaseYear(int releaseYear)
     return result;
 }
 
+void AudioCollection::printSearchResults(const std::vector<AudioFile>& results)
+{
+    int resultsCount = results.size();
+
+    if (resultsCount == 0) {
+        std::cout << "Ничего не найдено" << std::endl;
+        return;
+    }
+
+    std::cout << "Результаты поиска" << std::endl;
+    for (int i = 0; i < resultsCount; i++) {
+        const AudioFile& currAudioFile = results[i];
+        std::cout << (i + 1) << ". ";
+        currAudioFile.output(false);
+    }
+}
+
+void AudioCollection::searchAndPrintByArtistName(const std::string& artistName)
+{
+    std::vector<AudioFile> results = searchByArtistName(artistName);
+    printSearchResults(results);
+}
+
+void AudioCollection::searchAndPrintByReleaseYear(int releaseYear)
+{
+    std::vector<AudioFile> results = searchByReleaseYear(releaseYear);
+    printSearchResults(results);
+}
+
 void AudioCollection::printStats()
 {
     int tracksCount = list.size(); // количество треков
@@ -475,4 +530,9 @@ int MusicLibrary::printPlaylistArray()
     }
 
     return arraySize;
+}
+
+std::vector<AudioFile> MusicLibrary::getAudioFileArray()
+{
+    return audioFileArray;
 }

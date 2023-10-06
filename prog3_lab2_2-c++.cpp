@@ -27,6 +27,7 @@ public:
     void setTrackName(const std::string trackName);
 
     std::string getArtistName();
+    std::string getTrackName();
     int getDuration();
     int getReleaseYear();
 };
@@ -45,23 +46,31 @@ public:
     std::string& getPlaylistName();
     int getListSize();
     AudioFile& getElement(int index);
+
+    void setPlaylistName(const std::string& newPlaylistName);
 };
 
 class AudioPlayer {
 private:
-    bool isPlaying = 0;
-    Playlist& currPlaylist;
+    bool isPlaylistAssigned = false;
+    bool isPlaying = false;
+    Playlist* currPlaylist;
     int trackIndexInPlaylist;
 public:
-    AudioPlayer(Playlist& currPlaylist, int trackIndexInPlaylist = 0);
+    AudioPlayer();
+    AudioPlayer(Playlist* currPlaylist, int trackIndexInPlaylist = 0);
 
     void play();
     void pause();
     bool toggle();
     AudioFile& next();
     AudioFile& previous();
-    void setPlaylist(Playlist& newPlaylist);
+
     AudioFile& getCurrentTrack();
+    bool getIsPlaylistAssignedStatus();
+    bool getIsPlayingStatus();
+
+    void setPlaylist(Playlist* newPlaylist);
 };
 
 class AudioCollection {
@@ -97,9 +106,11 @@ public:
     int printPlaylistArray();
 
     std::vector<AudioFile> getAudioFileArray();
-};
+    int getPlaylistArraySize();
+    Playlist& getPlaylistByIndex(int index);
 
-int printAudioFileArray(std::vector<AudioFile>& arr);
+    ~MusicLibrary();
+};
 
 int main()
 {
@@ -108,6 +119,7 @@ int main()
     SetConsoleOutputCP(1251);
 
     MusicLibrary lib; // библиотека треков
+    AudioPlayer player; // аудиоплеер
 
     // меню
     int quit = 0;
@@ -129,7 +141,7 @@ int main()
             std::cout << "Введите команду: ";
             std::cin >> command;
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // очистка буфера ввода
-        } while (command < 0 || command > 4);
+        } while (command < 0 || command > 8);
 
         switch (command) {
         case 0:
@@ -156,6 +168,7 @@ int main()
             std::cout << "Поиск треков по имени исполнителя" << std::endl;
 
             std::string artistName;
+            std::cout << "Введите имя исполнителя: ";
             std::getline(std::cin, artistName);
 
             AudioCollection collection(lib.getAudioFileArray());
@@ -165,14 +178,167 @@ int main()
             std::cout << "Поиск треков по году выхода" << std::endl;
 
             int releaseYear;
+            std::cout << "Введите год выхода: ";
             std::cin >> releaseYear;
 
             AudioCollection collection(lib.getAudioFileArray());
             collection.searchAndPrintByReleaseYear(releaseYear);
         } break;
-        case 7:
+        case 7: {
             std::cout << "Редактировать плейлист" << std::endl;
-            break;
+
+            if (lib.getPlaylistArraySize() == 0) {
+                std::cout << "Редактирование плейлиста невозможно: нет плейлистов в библиотеке" << std::endl;
+                break;
+            }
+
+            lib.printPlaylistArray();
+
+            int playlistNumber;
+            do {
+                std::cout << "Введите номер плейлиста: ";
+                std::cin >> playlistNumber;
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // очистка буфера ввода
+            } while (playlistNumber < 1 || playlistNumber > lib.getPlaylistArraySize());
+
+            Playlist& chosenPlaylist = lib.getPlaylistByIndex(playlistNumber - 1);
+
+            int answer;
+            do {
+                do {
+                    std::cout << "Меню работы с плейлистом" << std::endl;
+                    std::cout << "1. Изменение названия плейлиста" << std::endl;
+                    std::cout << "2. Добавление трека в плейлист" << std::endl;
+                    std::cout << "3. Удаление трека из плейлиста" << std::endl;
+                    std::cout << "4. Вывод списка треков плейлиста" << std::endl;
+                    std::cout << "0. Завершить редактирование плейлиста" << std::endl;
+
+                    std::cout << "Введите команду: ";
+                    std::cin >> answer;
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // очистка буфера ввода
+                } while (answer < 0 || answer > 4);
+
+                switch (answer) {
+                case 0:
+                    std::cout << "Завершение работы по редактированию плейлиста" << std::endl;
+                    break;
+                case 1: {
+                    std::cout << "Изменение названия плейлиста" << std::endl;
+
+                    std::string newPlaylistName;
+                    std::cout << "Введите новое название плейлиста: ";
+                    std::getline(std::cin, newPlaylistName);
+
+                    chosenPlaylist.setPlaylistName(newPlaylistName);
+                    std::cout << "Название плейлиста изменено на \"" << newPlaylistName << "\"" << std::endl;
+                } break;
+                case 2: {
+                    std::cout << "Добавление трека в плейлист" << std::endl;
+
+                    AudioFile& createdAudioFile = lib.createAudioFile();
+                    chosenPlaylist.add(createdAudioFile);
+
+                    std::cout << "Трек добавлен в плейлист" << std::endl;
+                } break;
+                case 3: {
+                    std::cout << "Удаление трека из плейлиста" << std::endl;
+
+                    chosenPlaylist.output(false);
+
+                    int chosenTrackNumber;
+                    do {
+                        std::cout << "Введите номер трека для удаления: ";
+                        std::cin >> chosenTrackNumber;
+                    } while (chosenTrackNumber < 1 || chosenTrackNumber > chosenPlaylist.getListSize());
+
+                    chosenPlaylist.remove(chosenTrackNumber - 1);
+                    std::cout << "Выбранный трек удален из плейлиста" << std::endl;
+                } break;
+                case 4:
+                    std::cout << "Вывод списка треков плейлиста" << std::endl;
+
+                    chosenPlaylist.output(false);
+                    break;
+                }
+            } while (answer != 0);
+
+        } break;
+        case 8: {
+            int answer;
+            do {
+                do {
+                    bool isPlaying = player.getIsPlayingStatus();
+                    bool isPlaylistAssigned = player.getIsPlaylistAssignedStatus();
+
+                    std::cout << "Аудиоплеер" << std::endl;
+                    if (isPlaylistAssigned) {
+                        if (isPlaying)
+                            std::cout << "Статус: играет" << std::endl;
+                        else
+                            std::cout << "Статус: не играет" << std::endl;
+                        std::cout << "Текущий трек: " << player.getCurrentTrack().getTrackName() << ". ";
+                        std::cout << "Исполнитель: " << player.getCurrentTrack().getArtistName() << std::endl;
+                    }
+                    else
+                        std::cout << "Статус: плейлист не определен" << std::endl;
+
+                    std::cout << "Меню управления аудиоплеером" << std::endl;
+                    std::cout << "1. Назначить плейлист" << std::endl;
+                    std::cout << "2. Play/Pause" << std::endl;
+                    std::cout << "3. Следующий трек" << std::endl;
+                    std::cout << "4. Предыдущий трек" << std::endl;
+                    std::cout << "0. Выход в главное меню" << std::endl;
+
+                    std::cout << "Введите команду: ";
+                    std::cin >> answer;
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // очистка буфера ввода
+                } while (answer < 0 || answer > 4);
+
+                switch (answer) {
+                case 0:
+                    std::cout << "Возвращение к меню..." << std::endl;
+                    break;
+                case 1: {
+                    std::cout << "Назначить плейлист" << std::endl;
+
+                    if (lib.getPlaylistArraySize() == 0) {
+                        std::cout << "Ошибка: нет плейлистов в библиотеке" << std::endl;
+                        break;
+                    }
+
+                    lib.printPlaylistArray();
+
+                    int playlistNumber;
+                    do {
+                        std::cout << "Введите номер плейлиста: ";
+                        std::cin >> playlistNumber;
+                    } while (playlistNumber < 1 || playlistNumber > lib.getPlaylistArraySize());
+
+                    Playlist& chosenPlaylist = lib.getPlaylistByIndex(playlistNumber - 1);
+                    player.setPlaylist(&chosenPlaylist);
+                    std::cout << "Выбранный плейлист назначен" << std::endl;
+                } break;
+                case 2: {
+                    std::cout << "Изменить статус проигрывания" << std::endl;
+
+                    player.toggle();
+                    std::cout << "Статус изменен" << std::endl;
+                } break;
+                case 3: {
+                    std::cout << "Следующий трек" << std::endl;
+
+                    player.next();
+                    std::cout << "Трек в плеере изменен" << std::endl;
+                } break;
+                case 4: {
+                    std::cout << "Предыдущий трек" << std::endl;
+
+                    player.previous();
+                    std::cout << "Трек в плеере изменен" << std::endl;
+                } break;
+                }
+            } while (answer != 0);
+        } break;
         }
     }
 }
@@ -215,6 +381,11 @@ std::string AudioFile::getArtistName()
     return artistName;
 }
 
+std::string AudioFile::getTrackName()
+{
+    return trackName;
+}
+
 int AudioFile::getDuration()
 {
     return duration;
@@ -237,6 +408,7 @@ void Playlist::output(bool isLong)
 
     int listLength = list.size();
     for (int i = 0; i < listLength; i++) {
+        std::cout << i + 1 << ". ";
         list[i].output(isLong);
     }
 }
@@ -268,10 +440,22 @@ AudioFile& Playlist::getElement(int index)
     return list[index];
 }
 
-AudioPlayer::AudioPlayer(Playlist& currPlaylist, int trackIndexInPlaylist)
+void Playlist::setPlaylistName(const std::string& newPlaylistName)
+{
+    playlistName = newPlaylistName;
+}
+
+AudioPlayer::AudioPlayer()
+    : currPlaylist(currPlaylist), trackIndexInPlaylist(trackIndexInPlaylist)
+{
+    isPlaylistAssigned = false;
+}
+
+AudioPlayer::AudioPlayer(Playlist* currPlaylist, int trackIndexInPlaylist)
     : currPlaylist(currPlaylist), trackIndexInPlaylist(trackIndexInPlaylist)
 {
     this->currPlaylist = currPlaylist;
+    this->isPlaylistAssigned = true;
     this->trackIndexInPlaylist = trackIndexInPlaylist;
 }
 
@@ -293,7 +477,7 @@ bool AudioPlayer::toggle()
 
 AudioFile& AudioPlayer::next()
 {
-    if (trackIndexInPlaylist + 1 < currPlaylist.getListSize())
+    if (trackIndexInPlaylist + 1 < currPlaylist->getListSize())
         trackIndexInPlaylist++;
     return getCurrentTrack();
 }
@@ -305,14 +489,25 @@ AudioFile& AudioPlayer::previous()
     return getCurrentTrack();
 }
 
-void AudioPlayer::setPlaylist(Playlist& newPlaylist)
+void AudioPlayer::setPlaylist(Playlist* newPlaylist)
 {
     currPlaylist = newPlaylist;
+    isPlaylistAssigned = true;
 }
 
 AudioFile& AudioPlayer::getCurrentTrack()
 {
-    return currPlaylist.getElement(trackIndexInPlaylist);
+    return currPlaylist->getElement(trackIndexInPlaylist);
+}
+
+bool AudioPlayer::getIsPlaylistAssignedStatus()
+{
+    return isPlaylistAssigned;
+}
+
+bool AudioPlayer::getIsPlayingStatus()
+{
+    return isPlaying;
 }
 
 AudioCollection::AudioCollection(std::vector<AudioFile> list)
@@ -417,22 +612,22 @@ AudioFile& MusicLibrary::createAudioFile()
     std::string fileName, artistName, trackName;
     int duration, releaseYear;
 
-    std::cout << "Введите наименование файла" << std::endl;
+    std::cout << "Введите наименование файла: ";
     std::getline(std::cin, fileName);
-    std::cout << "Введите имя артиста" << std::endl;
+    std::cout << "Введите имя артиста: ";
     std::getline(std::cin, artistName);
-    std::cout << "Введите название трека" << std::endl;
+    std::cout << "Введите название трека: ";
     std::getline(std::cin, trackName);
-    std::cout << "Введите длительность трека" << std::endl;
+    std::cout << "Введите длительность трека (в с): ";
     std::cin >> duration;
-    std::cout << "Введите год выхода трека" << std::endl;
+    std::cout << "Введите год выхода трека: ";
     std::cin >> releaseYear;
 
-    AudioFile audioFile(fileName, artistName, trackName, duration, releaseYear);
+    AudioFile* audioFile = new AudioFile(fileName, artistName, trackName, duration, releaseYear);
     std::cout << "Трек создан" << std::endl;
 
-    audioFileArray.push_back(audioFile);
-    return audioFile;
+    audioFileArray.push_back(*audioFile);
+    return *audioFile;
 }
 
 Playlist& MusicLibrary::createPlaylist()
@@ -442,7 +637,7 @@ Playlist& MusicLibrary::createPlaylist()
     std::string playlistName;
     std::vector<AudioFile> list;
 
-    std::cout << "Введите название плейлиста" << std::endl;
+    std::cout << "Введите название плейлиста: ";
     std::getline(std::cin, playlistName);
 
     bool quit = 0;
@@ -456,11 +651,12 @@ Playlist& MusicLibrary::createPlaylist()
         do {
             std::cout << "Выбор (0-2): ";
             std::cin >> answer;
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // очистка буфера ввода
         } while (answer < 0 || answer > 2);
 
         switch (answer) {
         case 0: // заврешение
-            std::cout << "Создаем плейлист...";
+            std::cout << "Создаем плейлист..." << std::endl;
             quit = true;
             break;
         case 1: { // добавление трека из библиотеки
@@ -468,16 +664,17 @@ Playlist& MusicLibrary::createPlaylist()
 
             int audioFileArraySize = audioFileArray.size();
             if (audioFileArraySize == 0)
-                std::cout << "Невозможно добавить трек из библиотеки: список треков пуст";
+                std::cout << "Невозможно добавить трек из библиотеки: список треков пуст" << std::endl;
             else {
                 printAudioFileArray();
 
                 do {
                     std::cout << "Выбранный трек: ";
                     std::cin >> answer;
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // очистка буфера ввода
                 } while (answer < 1 || answer > audioFileArraySize);
 
-                AudioFile& chosenTrack = audioFileArray.at(answer);
+                AudioFile& chosenTrack = audioFileArray[answer - 1];
                 list.push_back(chosenTrack);
                 std::cout << "Выбранный трек добавлен" << std::endl;
             }
@@ -535,4 +732,21 @@ int MusicLibrary::printPlaylistArray()
 std::vector<AudioFile> MusicLibrary::getAudioFileArray()
 {
     return audioFileArray;
+}
+
+int MusicLibrary::getPlaylistArraySize()
+{
+    return playlistArray.size();
+}
+
+Playlist& MusicLibrary::getPlaylistByIndex(int index)
+{
+    return playlistArray[index];
+}
+
+MusicLibrary::~MusicLibrary()
+{
+    for (int i = 0; i < audioFileArray.size(); i++) {
+        delete &audioFileArray[i];
+    }
 }
